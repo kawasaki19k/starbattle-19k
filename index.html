@@ -50,16 +50,15 @@
 
     #board{
       display:grid;
-      gap:2px;
-      background:#334155;
-      padding:2px;
+      gap:0;
+      border:3px solid white;
       border-radius:12px;
+      overflow:hidden;
     }
 
     .cell{
       width:52px;
       height:52px;
-      background:#1e293b;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -67,18 +66,26 @@
       cursor:pointer;
       user-select:none;
       transition:0.15s;
+      position:relative;
+      border:1px solid #334155;
     }
 
     .cell:hover{
       filter:brightness(1.1);
     }
 
-    .invalid{
-      background:#7f1d1d !important;
-    }
-
     .star{
       color:#facc15;
+      text-shadow:0 0 10px rgba(250,204,21,0.8);
+    }
+
+    .xmark{
+      color:#94a3b8;
+      font-size:24px;
+    }
+
+    .invalid{
+      background:#7f1d1d !important;
     }
 
     #message{
@@ -100,28 +107,35 @@
         height:40px;
         font-size:22px;
       }
+
+      .xmark{
+        font-size:18px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <h1>⭐ Star Battle</h1>
+<h1>⭐ Star Battle</h1>
 
-  <div class="controls">
-    <button onclick="newGame()">新しい問題</button>
-    <button onclick="showAnswer()">答え表示</button>
-    <button onclick="copyURL()">URL共有</button>
-  </div>
+<div class="controls">
+  <button onclick="newGame()">新しい問題</button>
+  <button onclick="showAnswer()">答え表示</button>
+  <button onclick="copyURL()">URL共有</button>
+</div>
 
-  <div id="board"></div>
+<div id="board"></div>
 
-  <div id="message"></div>
+<div id="message"></div>
 
-  <div class="rule">
-    各行・列・エリアに星は1つだけ。<br>
-    星同士は縦横斜めに隣接できません。
-  </div>
+<div class="rule">
+  左クリック：星を置く<br>
+  右クリック：バツ印<br><br>
+
+  各行・列・エリアに星は1つだけ。<br>
+  星同士は縦横斜めに隣接できません。
+</div>
 
 <script>
 const SIZE = 8;
@@ -133,6 +147,25 @@ let regions = [];
 const board = document.getElementById("board");
 const message = document.getElementById("message");
 
+const regionColors = [
+  "#1e293b",
+  "#172554",
+  "#3f1d2e",
+  "#1f2937",
+  "#3b0764",
+  "#0f766e",
+  "#3f3f46",
+  "#422006",
+  "#0c4a6e",
+  "#3f6212",
+  "#312e81",
+  "#4c0519",
+  "#374151",
+  "#14532d",
+  "#713f12",
+  "#581c87"
+];
+
 function random(seed){
   return function(){
     seed = (seed * 9301 + 49297) % 233280;
@@ -141,15 +174,18 @@ function random(seed){
 }
 
 function createRegions(){
+
   const arr = [];
 
-  let id = 0;
-
   for(let r=0;r<SIZE;r++){
+
     arr[r] = [];
 
     for(let c=0;c<SIZE;c++){
-      arr[r][c] = Math.floor(r/2)*4 + Math.floor(c/2);
+
+      arr[r][c] =
+        Math.floor(r/2)*4 +
+        Math.floor(c/2);
     }
   }
 
@@ -163,7 +199,8 @@ function canPlace(stars,r,c){
     if(sr===r) return false;
     if(sc===c) return false;
 
-    if(Math.abs(sr-r)<=1 && Math.abs(sc-c)<=1){
+    if(Math.abs(sr-r)<=1 &&
+       Math.abs(sc-c)<=1){
       return false;
     }
 
@@ -183,7 +220,8 @@ function generateSolution(seed){
 
   let tries = 0;
 
-  while(stars.length < SIZE && tries < 10000){
+  while(stars.length < SIZE &&
+        tries < 10000){
 
     const r = Math.floor(rand()*SIZE);
     const c = Math.floor(rand()*SIZE);
@@ -211,10 +249,15 @@ function setup(seed){
   player = [];
 
   for(let r=0;r<SIZE;r++){
+
     player[r] = [];
 
     for(let c=0;c<SIZE;c++){
-      player[r][c] = false;
+
+      player[r][c] = {
+        star:false,
+        x:false
+      };
     }
   }
 
@@ -225,7 +268,8 @@ function draw(){
 
   board.innerHTML = "";
 
-  board.style.gridTemplateColumns = `repeat(${SIZE}, 1fr)`;
+  board.style.gridTemplateColumns =
+    `repeat(${SIZE}, 1fr)`;
 
   for(let r=0;r<SIZE;r++){
 
@@ -235,17 +279,62 @@ function draw(){
 
       cell.className = "cell";
 
-      if(player[r][c]){
-        cell.innerHTML = '<span class="star">★</span>';
+      const region = regions[r][c];
+
+      cell.style.background =
+        regionColors[
+          region % regionColors.length
+        ];
+
+      if(player[r][c].star){
+        cell.innerHTML =
+          '<span class="star">★</span>';
+      }
+
+      if(player[r][c].x){
+        cell.innerHTML =
+          '<span class="xmark">✕</span>';
+      }
+
+      // エリア境界線
+      if(r > 0 &&
+         regions[r][c] !== regions[r-1][c]){
+        cell.style.borderTop =
+          "4px solid white";
+      }
+
+      if(c > 0 &&
+         regions[r][c] !== regions[r][c-1]){
+        cell.style.borderLeft =
+          "4px solid white";
       }
 
       cell.onclick = ()=>{
 
-        player[r][c] = !player[r][c];
+        player[r][c].star =
+          !player[r][c].star;
+
+        if(player[r][c].star){
+          player[r][c].x = false;
+        }
 
         draw();
-
         check();
+      };
+
+      // 右クリック
+      cell.oncontextmenu = (e)=>{
+
+        e.preventDefault();
+
+        player[r][c].x =
+          !player[r][c].x;
+
+        if(player[r][c].x){
+          player[r][c].star = false;
+        }
+
+        draw();
       };
 
       board.appendChild(cell);
@@ -257,13 +346,15 @@ function draw(){
 
 function highlightErrors(){
 
-  const cells = document.querySelectorAll(".cell");
+  const cells =
+    document.querySelectorAll(".cell");
 
   const stars = [];
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
-      if(player[r][c]){
+
+      if(player[r][c].star){
         stars.push([r,c]);
       }
     }
@@ -280,13 +371,20 @@ function highlightErrors(){
       const bad =
         r1===r2 ||
         c1===c2 ||
-        regions[r1][c1]===regions[r2][c2] ||
-        (Math.abs(r1-r2)<=1 && Math.abs(c1-c2)<=1);
+        regions[r1][c1]===
+        regions[r2][c2] ||
+        (
+          Math.abs(r1-r2)<=1 &&
+          Math.abs(c1-c2)<=1
+        );
 
       if(bad){
 
-        cells[r1*SIZE+c1].classList.add("invalid");
-        cells[r2*SIZE+c2].classList.add("invalid");
+        cells[r1*SIZE+c1]
+          .classList.add("invalid");
+
+        cells[r2*SIZE+c2]
+          .classList.add("invalid");
       }
     }
   }
@@ -298,7 +396,7 @@ function check(){
 
   for(const [r,c] of solution){
 
-    if(!player[r][c]){
+    if(!player[r][c].star){
       ok = false;
     }
   }
@@ -307,13 +405,20 @@ function check(){
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
-      if(player[r][c]) count++;
+
+      if(player[r][c].star){
+        count++;
+      }
     }
   }
 
   if(ok && count===SIZE){
-    message.innerText = "🎉 クリア！";
+
+    message.innerText =
+      "🎉 クリア！";
+
   }else{
+
     message.innerText = "";
   }
 }
@@ -321,7 +426,9 @@ function check(){
 function showAnswer(){
 
   for(const [r,c] of solution){
-    player[r][c] = true;
+
+    player[r][c].star = true;
+    player[r][c].x = false;
   }
 
   draw();
@@ -338,16 +445,22 @@ function newGame(){
 
 function copyURL(){
 
-  navigator.clipboard.writeText(location.href);
+  navigator.clipboard.writeText(
+    location.href
+  );
 
-  message.innerText = "URLをコピーしました";
+  message.innerText =
+    "URLをコピーしました";
 }
 
-const seed = Number(location.hash.replace("#","")) || Date.now();
+const seed =
+  Number(location.hash.replace("#",""))
+  || Date.now();
 
 location.hash = seed;
 
 setup(seed);
+
 </script>
 
 </body>
