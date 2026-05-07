@@ -1,118 +1,120 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Star Battle</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Star Battle</title>
 
-  <style>
-    *{
-      box-sizing:border-box;
-      font-family:sans-serif;
-    }
+<style>
 
-    body{
-      margin:0;
-      background:#0f172a;
-      color:white;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      min-height:100vh;
-      padding:20px;
-    }
+*{
+  box-sizing:border-box;
+  font-family:sans-serif;
+}
 
-    h1{
-      margin-bottom:10px;
-    }
+body{
+  margin:0;
+  background:#0f172a;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:20px;
+  min-height:100vh;
+}
 
-    .controls{
-      display:flex;
-      gap:10px;
-      margin-bottom:20px;
-      flex-wrap:wrap;
-      justify-content:center;
-    }
+h1{
+  margin-bottom:10px;
+}
 
-    button{
-      border:none;
-      background:#2563eb;
-      color:white;
-      padding:10px 16px;
-      border-radius:10px;
-      cursor:pointer;
-      font-size:14px;
-    }
+.controls{
+  display:flex;
+  gap:10px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
 
-    button:hover{
-      background:#1d4ed8;
-    }
+button{
+  border:none;
+  background:#2563eb;
+  color:white;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+}
 
-    #board{
-      display:grid;
-      gap:0;
-      border:3px solid white;
-      border-radius:12px;
-      overflow:hidden;
-    }
+button:hover{
+  background:#1d4ed8;
+}
 
-    .cell{
-      width:52px;
-      height:52px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:28px;
-      cursor:pointer;
-      user-select:none;
-      transition:0.15s;
-      position:relative;
-      border:1px solid #334155;
-    }
+#board{
+  display:grid;
+  gap:0;
+  border:4px solid white;
+  overflow:hidden;
+  border-radius:12px;
+}
 
-    .cell:hover{
-      filter:brightness(1.1);
-    }
+.cell{
+  width:52px;
+  height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  user-select:none;
+  font-size:28px;
+  border:1px solid rgba(255,255,255,0.1);
+  transition:0.15s;
+}
 
-    .star{
-      color:#facc15;
-      text-shadow:0 0 10px rgba(250,204,21,0.8);
-    }
+.cell:hover{
+  filter:brightness(1.1);
+}
 
-    .xmark{
-      color:#94a3b8;
-      font-size:24px;
-    }
+.star{
+  color:#facc15;
+  text-shadow:0 0 10px rgba(250,204,21,0.8);
+}
 
-    .invalid{
-      background:#7f1d1d !important;
-    }
+.xmark{
+  color:#cbd5e1;
+  font-size:22px;
+}
 
-    #message{
-      margin-top:16px;
-      font-weight:bold;
-      min-height:24px;
-    }
+.invalid{
+  background:#7f1d1d !important;
+}
 
-    .rule{
-      margin-top:20px;
-      opacity:0.7;
-      text-align:center;
-      line-height:1.6;
-    }
+#message{
+  margin-top:16px;
+  min-height:24px;
+  font-weight:bold;
+}
 
-    @media(max-width:600px){
-      .cell{
-        width:40px;
-        height:40px;
-        font-size:22px;
-      }
+.rule{
+  margin-top:20px;
+  opacity:0.8;
+  line-height:1.7;
+  text-align:center;
+}
 
-      .xmark{
-        font-size:18px;
-      }
-    }
-  </style>
+@media(max-width:600px){
+
+  .cell{
+    width:40px;
+    height:40px;
+    font-size:22px;
+  }
+
+  .xmark{
+    font-size:18px;
+  }
+
+}
+
+</style>
 </head>
 
 <body>
@@ -130,14 +132,17 @@
 <div id="message"></div>
 
 <div class="rule">
-  左クリック：星を置く<br>
-  右クリック：バツ印<br><br>
+左クリック：★<br>
+右クリック：✕<br><br>
 
-  各行・列・エリアに星は1つだけ。<br>
-  星同士は縦横斜めに隣接できません。
+各行・列・エリアに<br>
+星を1つずつ置く。<br><br>
+
+星同士は縦横斜めに隣接不可。
 </div>
 
 <script>
+
 const SIZE = 8;
 
 let player = [];
@@ -148,63 +153,140 @@ const board = document.getElementById("board");
 const message = document.getElementById("message");
 
 const regionColors = [
-  "#1e293b",
   "#172554",
   "#3f1d2e",
-  "#1f2937",
-  "#3b0764",
-  "#0f766e",
+  "#1e293b",
   "#3f3f46",
+  "#0f766e",
   "#422006",
-  "#0c4a6e",
-  "#3f6212",
-  "#312e81",
-  "#4c0519",
-  "#374151",
   "#14532d",
-  "#713f12",
-  "#581c87"
+  "#4c0519",
+  "#312e81",
+  "#374151",
+  "#581c87",
+  "#713f12"
 ];
 
-function random(seed){
+function seededRandom(seed){
+
   return function(){
-    seed = (seed * 9301 + 49297) % 233280;
+
+    seed =
+      (seed * 9301 + 49297)
+      % 233280;
+
     return seed / 233280;
-  }
+  };
 }
 
-function createRegions(){
+function createRegions(seed){
 
-  const arr = [];
+  const rand = seededRandom(seed);
+
+  const grid = [];
 
   for(let r=0;r<SIZE;r++){
 
-    arr[r] = [];
+    grid[r] = [];
 
     for(let c=0;c<SIZE;c++){
 
-      arr[r][c] =
-        Math.floor(r/2)*4 +
-        Math.floor(c/2);
+      grid[r][c] = -1;
     }
   }
 
-  return arr;
+  let regionId = 0;
+
+  const dirs = [
+    [1,0],
+    [-1,0],
+    [0,1],
+    [0,-1]
+  ];
+
+  for(let start=0;start<SIZE*SIZE;start++){
+
+    const sr = Math.floor(start / SIZE);
+    const sc = start % SIZE;
+
+    if(grid[sr][sc] !== -1){
+      continue;
+    }
+
+    const targetSize =
+      4 + Math.floor(rand()*4);
+
+    const queue = [[sr,sc]];
+
+    grid[sr][sc] = regionId;
+
+    let count = 1;
+
+    while(queue.length && count < targetSize){
+
+      const index =
+        Math.floor(rand()*queue.length);
+
+      const [r,c] =
+        queue[index];
+
+      const shuffled =
+        [...dirs].sort(()=>rand()-0.5);
+
+      for(const [dr,dc] of shuffled){
+
+        const nr = r + dr;
+        const nc = c + dc;
+
+        if(
+          nr < 0 ||
+          nc < 0 ||
+          nr >= SIZE ||
+          nc >= SIZE
+        ){
+          continue;
+        }
+
+        if(grid[nr][nc] !== -1){
+          continue;
+        }
+
+        grid[nr][nc] = regionId;
+
+        queue.push([nr,nc]);
+
+        count++;
+
+        if(count >= targetSize){
+          break;
+        }
+      }
+    }
+
+    regionId++;
+  }
+
+  return grid;
 }
 
 function canPlace(stars,r,c){
 
   for(const [sr,sc] of stars){
 
-    if(sr===r) return false;
-    if(sc===c) return false;
+    if(sr === r) return false;
+    if(sc === c) return false;
 
-    if(Math.abs(sr-r)<=1 &&
-       Math.abs(sc-c)<=1){
+    if(
+      Math.abs(sr-r)<=1 &&
+      Math.abs(sc-c)<=1
+    ){
       return false;
     }
 
-    if(regions[sr][sc]===regions[r][c]){
+    if(
+      regions[sr][sc] ===
+      regions[r][c]
+    ){
       return false;
     }
   }
@@ -214,26 +296,44 @@ function canPlace(stars,r,c){
 
 function generateSolution(seed){
 
-  const rand = random(seed);
+  const rand = seededRandom(seed);
 
   const stars = [];
 
   let tries = 0;
 
-  while(stars.length < SIZE &&
-        tries < 10000){
+  while(
+    stars.length < SIZE &&
+    tries < 20000
+  ){
 
-    const r = Math.floor(rand()*SIZE);
-    const c = Math.floor(rand()*SIZE);
+    const r =
+      Math.floor(rand()*SIZE);
+
+    const c =
+      Math.floor(rand()*SIZE);
 
     if(canPlace(stars,r,c)){
-      stars.push([r,c]);
+
+      const region =
+        regions[r][c];
+
+      const used =
+        stars.some(([sr,sc])=>
+          regions[sr][sc]===region
+        );
+
+      if(!used){
+
+        stars.push([r,c]);
+      }
     }
 
     tries++;
   }
 
   if(stars.length < SIZE){
+
     return generateSolution(seed+1);
   }
 
@@ -242,9 +342,10 @@ function generateSolution(seed){
 
 function setup(seed){
 
-  regions = createRegions();
+  regions = createRegions(seed);
 
-  solution = generateSolution(seed);
+  solution =
+    generateSolution(seed);
 
   player = [];
 
@@ -269,42 +370,54 @@ function draw(){
   board.innerHTML = "";
 
   board.style.gridTemplateColumns =
-    `repeat(${SIZE}, 1fr)`;
+    `repeat(${SIZE},1fr)`;
 
   for(let r=0;r<SIZE;r++){
 
     for(let c=0;c<SIZE;c++){
 
-      const cell = document.createElement("div");
+      const cell =
+        document.createElement("div");
 
       cell.className = "cell";
 
-      const region = regions[r][c];
+      const region =
+        regions[r][c];
 
       cell.style.background =
         regionColors[
-          region % regionColors.length
+          region %
+          regionColors.length
         ];
 
       if(player[r][c].star){
+
         cell.innerHTML =
           '<span class="star">★</span>';
       }
 
       if(player[r][c].x){
+
         cell.innerHTML =
           '<span class="xmark">✕</span>';
       }
 
-      // エリア境界線
-      if(r > 0 &&
-         regions[r][c] !== regions[r-1][c]){
+      // 境界線
+
+      if(
+        r > 0 &&
+        regions[r][c] !==
+        regions[r-1][c]
+      ){
         cell.style.borderTop =
           "4px solid white";
       }
 
-      if(c > 0 &&
-         regions[r][c] !== regions[r][c-1]){
+      if(
+        c > 0 &&
+        regions[r][c] !==
+        regions[r][c-1]
+      ){
         cell.style.borderLeft =
           "4px solid white";
       }
@@ -315,6 +428,7 @@ function draw(){
           !player[r][c].star;
 
         if(player[r][c].star){
+
           player[r][c].x = false;
         }
 
@@ -322,7 +436,6 @@ function draw(){
         check();
       };
 
-      // 右クリック
       cell.oncontextmenu = (e)=>{
 
         e.preventDefault();
@@ -331,6 +444,7 @@ function draw(){
           !player[r][c].x;
 
         if(player[r][c].x){
+
           player[r][c].star = false;
         }
 
@@ -355,6 +469,7 @@ function highlightErrors(){
     for(let c=0;c<SIZE;c++){
 
       if(player[r][c].star){
+
         stars.push([r,c]);
       }
     }
@@ -371,8 +486,10 @@ function highlightErrors(){
       const bad =
         r1===r2 ||
         c1===c2 ||
+
         regions[r1][c1]===
         regions[r2][c2] ||
+
         (
           Math.abs(r1-r2)<=1 &&
           Math.abs(c1-c2)<=1
@@ -394,25 +511,48 @@ function check(){
 
   let ok = true;
 
+  // 解答チェック
   for(const [r,c] of solution){
 
     if(!player[r][c].star){
+
       ok = false;
     }
   }
 
+  // 星数
   let count = 0;
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
 
       if(player[r][c].star){
+
         count++;
       }
     }
   }
 
-  if(ok && count===SIZE){
+  // エリアに最低1個あるか
+  const regionSet = new Set();
+
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+
+      if(player[r][c].star){
+
+        regionSet.add(
+          regions[r][c]
+        );
+      }
+    }
+  }
+
+  if(
+    ok &&
+    count===SIZE &&
+    regionSet.size===SIZE
+  ){
 
     message.innerText =
       "🎉 クリア！";
@@ -454,7 +594,9 @@ function copyURL(){
 }
 
 const seed =
-  Number(location.hash.replace("#",""))
+  Number(
+    location.hash.replace("#","")
+  )
   || Date.now();
 
 location.hash = seed;
