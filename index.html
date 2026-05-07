@@ -6,6 +6,7 @@
 <title>Star Battle</title>
 
 <style>
+
 *{
   box-sizing:border-box;
   font-family:sans-serif;
@@ -73,6 +74,7 @@ button.active{
 @media(max-width:600px){
   .cell{width:40px;height:40px;font-size:22px;}
 }
+
 </style>
 </head>
 
@@ -112,6 +114,7 @@ const COLORS = [
    モード
 ====================== */
 function setMode(m){
+
   mode = m;
 
   starBtn.classList.remove("active");
@@ -122,7 +125,7 @@ function setMode(m){
 }
 
 /* ======================
-   エリア生成（安定版）
+   エリア生成（最低2マス保証版）
 ====================== */
 function generateRegions(){
 
@@ -132,39 +135,117 @@ function generateRegions(){
 
   let id = 0;
 
-  for(let r=0;r<SIZE;r++){
-    for(let c=0;c<SIZE;c++){
+  // ① シード配置（8個）
+  const seeds = [];
 
-      if(grid[r][c] !== -1) continue;
+  while(seeds.length < REGION_COUNT){
 
-      const stack = [[r,c]];
-      grid[r][c] = id;
+    const r = Math.floor(Math.random()*SIZE);
+    const c = Math.floor(Math.random()*SIZE);
 
-      while(stack.length){
+    if(!seeds.some(([sr,sc])=>sr===r && sc===c)){
+      seeds.push([r,c]);
+    }
+  }
 
-        const [y,x] = stack.pop();
+  for(let i=0;i<REGION_COUNT;i++){
+    const [r,c] = seeds[i];
+    grid[r][c] = i;
+  }
 
-        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  // ② 拡張
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
-        for(const [dy,dx] of dirs){
+  let changed = true;
 
-          const ny = y + dy;
-          const nx = x + dx;
+  while(changed){
+
+    changed = false;
+
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+
+        const id = grid[r][c];
+        if(id === -1) continue;
+
+        for(const [dr,dc] of dirs){
+
+          const nr = r + dr;
+          const nc = c + dc;
 
           if(
-            ny>=0 && nx>=0 &&
-            ny<SIZE && nx<SIZE &&
-            grid[ny][nx] === -1 &&
-            Math.random() < 0.5
+            nr>=0&&nc>=0&&
+            nr<SIZE&&nc<SIZE&&
+            grid[nr][nc] === -1 &&
+            Math.random() < 0.6
           ){
-            grid[ny][nx] = id;
-            stack.push([ny,nx]);
+            grid[nr][nc] = id;
+            changed = true;
           }
         }
       }
+    }
+  }
 
-      id++;
-      if(id >= REGION_COUNT) break;
+  // ③ 残り埋め
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+
+      if(grid[r][c] === -1){
+
+        for(const [dr,dc] of dirs){
+
+          const nr = r + dr;
+          const nc = c + dc;
+
+          if(
+            nr>=0&&nc>=0&&
+            nr<SIZE&&nc<SIZE&&
+            grid[nr][nc] !== -1
+          ){
+            grid[r][c] = grid[nr][nc];
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // ⭐ ④ 最低2マス保証（ここ追加）
+  for(let i=0;i<REGION_COUNT;i++){
+
+    let count = 0;
+
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(grid[r][c] === i) count++;
+      }
+    }
+
+    if(count < 2){
+
+      for(let r=0;r<SIZE;r++){
+        for(let c=0;c<SIZE;c++){
+
+          if(grid[r][c] === i){
+
+            const dirs2 = [[1,0],[-1,0],[0,1],[0,-1]];
+
+            for(const [dr,dc] of dirs2){
+
+              const nr=r+dr;
+              const nc=c+dc;
+
+              if(
+                nr>=0&&nc>=0&&
+                nr<SIZE&&nc<SIZE
+              ){
+                grid[nr][nc] = i;
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -172,36 +253,37 @@ function generateRegions(){
 }
 
 /* ======================
-   ルールチェック
+   ルール
 ====================== */
 function ok(stars,r,c){
 
   for(const [y,x] of stars){
 
-    if(y===r || x===c) return false;
+    if(y===r||x===c) return false;
 
     if(
       Math.abs(y-r)<=1 &&
       Math.abs(x-c)<=1
     ) return false;
 
-    if(regions[y][x] === regions[r][c])
-      return false;
+    if(
+      regions[y][x] === regions[r][c]
+    ) return false;
   }
 
   return true;
 }
 
 /* ======================
-   解（安定）
+   解
 ====================== */
 function solve(){
 
-  const stars = [];
+  const stars=[];
 
   function dfs(r){
 
-    if(r === SIZE) return true;
+    if(r===SIZE) return true;
 
     for(let c=0;c<SIZE;c++){
 
@@ -219,6 +301,7 @@ function solve(){
   }
 
   dfs(0);
+
   return stars;
 }
 
@@ -301,7 +384,7 @@ function draw(){
 ====================== */
 function check(){
 
-  let stars = [];
+  let stars=[];
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
@@ -340,13 +423,6 @@ function showAnswer(){
     );
 
   draw();
-}
-
-/* ======================
-   新しい問題
-====================== */
-function newGame(){
-  setup();
 }
 
 setMode("star");
