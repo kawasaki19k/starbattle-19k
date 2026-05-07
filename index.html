@@ -6,10 +6,7 @@
 <title>Star Battle</title>
 
 <style>
-*{
-  box-sizing:border-box;
-  font-family:sans-serif;
-}
+*{box-sizing:border-box;font-family:sans-serif;}
 
 body{
   margin:0;
@@ -26,7 +23,6 @@ h1{margin-bottom:10px;}
 .controls{
   display:flex;
   gap:8px;
-  flex-wrap:wrap;
   margin-bottom:12px;
 }
 
@@ -39,9 +35,7 @@ button{
   cursor:pointer;
 }
 
-button.active{
-  background:#2563eb;
-}
+button.active{background:#2563eb;}
 
 #board{
   display:grid;
@@ -69,12 +63,6 @@ button.active{
   min-height:20px;
 }
 
-/* 太いエリア線 */
-.top-border{border-top:4px solid white;}
-.left-border{border-left:4px solid white;}
-.right-border{border-right:4px solid white;}
-.bottom-border{border-bottom:4px solid white;}
-
 @media(max-width:600px){
   .cell{width:40px;height:40px;font-size:22px;}
 }
@@ -98,10 +86,11 @@ button.active{
 <script>
 
 const SIZE = 8;
+const REGION_COUNT = 8;
 
 let mode = "star";
-let boardData = [];
 let regions = [];
+let boardData = [];
 let solution = [];
 
 const board = document.getElementById("board");
@@ -121,92 +110,118 @@ function setMode(m){
   if(m==="x") xBtn.classList.add("active");
 }
 
-/* ===== エリア生成（必ず2マス以上） ===== */
-function makeRegions(){
+/* ===== エリア生成（8個固定・最低2マス保証） ===== */
+function createRegions(){
 
-  const grid = Array.from(
-    {length:SIZE},
-    ()=>Array(SIZE).fill(-1)
-  );
+  const grid =
+    Array.from({length:SIZE},
+      ()=>Array(SIZE).fill(-1));
 
-  let id = 0;
+  // ① シード8個作る
+  const seeds = [];
 
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  while(seeds.length < REGION_COUNT){
 
-  for(let r=0;r<SIZE;r++){
-    for(let c=0;c<SIZE;c++){
+    const r = Math.floor(Math.random()*SIZE);
+    const c = Math.floor(Math.random()*SIZE);
 
-      if(grid[r][c] !== -1) continue;
-
-      const stack = [[r,c]];
-      grid[r][c] = id;
-
-      let size = 1;
-
-      while(stack.length && size < 6){
-
-        const [y,x] = stack.pop();
-
-        for(const [dy,dx] of dirs){
-
-          const ny = y + dy;
-          const nx = x + dx;
-
-          if(
-            ny>=0 && nx>=0 &&
-            ny<SIZE && nx<SIZE &&
-            grid[ny][nx] === -1
-          ){
-
-            if(Math.random() < 0.6){
-
-              grid[ny][nx] = id;
-              stack.push([ny,nx]);
-              size++;
-            }
-          }
-        }
-      }
-
-      id++;
+    if(!seeds.some(s=>s[0]===r && s[1]===c)){
+      seeds.push([r,c]);
     }
   }
 
-  // 最低2マス保証（小さいエリア修正）
-  for(let i=0;i<3;i++){
+  // ② 各エリアに1マス割り当て
+  for(let i=0;i<REGION_COUNT;i++){
+    const [r,c] = seeds[i];
+    grid[r][c] = i;
+  }
+
+  // ③ 拡張（全部2マス以上にする）
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+  let changed = true;
+
+  while(changed){
+
+    changed = false;
 
     for(let r=0;r<SIZE;r++){
       for(let c=0;c<SIZE;c++){
 
         const id = grid[r][c];
+        if(id === -1) continue;
 
-        let count = 0;
+        const neighbors = [];
 
-        for(let y=0;y<SIZE;y++){
-          for(let x=0;x<SIZE;x++){
-            if(grid[y][x] === id) count++;
+        for(const [dr,dc] of dirs){
+
+          const nr = r + dr;
+          const nc = c + dc;
+
+          if(
+            nr>=0&&nc>=0&&
+            nr<SIZE&&nc<SIZE&&
+            grid[nr][nc]===-1
+          ){
+            neighbors.push([nr,nc]);
           }
         }
 
-        if(count < 2){
+        if(neighbors.length){
 
-          const neighbors = [
-            [1,0],[-1,0],[0,1],[0,-1]
-          ];
+          const [nr,nc] =
+            neighbors[
+              Math.floor(
+                Math.random()*neighbors.length
+              )
+            ];
 
-          for(const [dy,dx] of neighbors){
+          grid[nr][nc] = id;
 
-            const ny=r+dy,nx=c+dx;
+          changed = true;
+        }
+      }
+    }
+  }
 
-            if(
-              ny>=0&&nx>=0&&
-              ny<SIZE&&nx<SIZE
-            ){
-              grid[ny][nx] = id;
-            }
+  // ④ 空白があれば埋める
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+
+      if(grid[r][c]===-1){
+
+        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+
+        for(const [dr,dc] of dirs){
+
+          const nr=r+dr,nc=c+dc;
+
+          if(
+            nr>=0&&nc>=0&&
+            nr<SIZE&&nc<SIZE&&
+            grid[nr][nc]!==-1
+          ){
+            grid[r][c]=grid[nr][nc];
+            break;
           }
         }
       }
+    }
+  }
+
+  // ⑤ 最低2マス保証チェック
+  for(let i=0;i<REGION_COUNT;i++){
+
+    let count = 0;
+
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(grid[r][c]===i) count++;
+      }
+    }
+
+    if(count < 2){
+      return createRegions(); // 再生成
     }
   }
 
@@ -220,19 +235,17 @@ function ok(stars,r,c){
 
     if(y===r||x===c) return false;
 
-    if(
-      Math.abs(y-r)<=1 &&
-      Math.abs(x-c)<=1
-    ) return false;
+    if(Math.abs(y-r)<=1 && Math.abs(x-c)<=1)
+      return false;
 
-    if(regions[y][x] === regions[r][c])
+    if(regions[y][x]===regions[r][c])
       return false;
   }
 
   return true;
 }
 
-/* ===== 解（簡易・重すぎ防止） ===== */
+/* ===== 解 ===== */
 function solve(){
 
   const stars=[];
@@ -257,68 +270,22 @@ function solve(){
   }
 
   dfs(0);
+
   return stars;
 }
 
-/* ===== 唯一解チェック（簡易） ===== */
-function hasAnotherSolution(){
+/* ===== 初期化 ===== */
+function setup(){
 
-  let count = 0;
+  regions = createRegions();
+  solution = solve();
 
-  const stars=[];
-
-  function dfs(r){
-
-    if(r===SIZE){
-
-      count++;
-      return count > 1;
-    }
-
-    for(let c=0;c<SIZE;c++){
-
-      if(ok(stars,r,c)){
-
-        stars.push([r,c]);
-
-        if(dfs(r+1)) return true;
-
-        stars.pop();
-      }
-    }
-
-    return false;
-  }
-
-  dfs(0);
-
-  return count > 1;
-}
-
-/* ===== 新規問題 ===== */
-function newGame(){
-
-  let tries = 0;
-
-  do{
-
-    regions = makeRegions();
-    solution = solve();
-
-    tries++;
-
-    if(tries > 10) break;
-
-  }while(hasAnotherSolution());
-
-  boardData = Array.from(
-    {length:SIZE},
-    ()=>Array(SIZE).fill({s:false,x:false})
-  );
-
-  boardData = boardData.map(r =>
-    r.map(()=>({s:false,x:false}))
-  );
+  boardData =
+    Array.from({length:SIZE},
+      ()=>Array.from({length:SIZE},
+        ()=>({star:false,x:false})
+      )
+    );
 
   draw();
 }
@@ -327,34 +294,23 @@ function newGame(){
 function draw(){
 
   board.innerHTML="";
-  board.style.gridTemplateColumns =
+  board.style.gridTemplateColumns=
     `repeat(${SIZE},1fr)`;
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
 
-      const cell=document.createElement("div");
+      const cell =
+        document.createElement("div");
+
       cell.className="cell";
 
       const id = regions[r][c];
 
       cell.style.background =
-        COLORS[id % COLORS.length];
+        COLORS[id];
 
-      // 太線エリア
-      if(r===0 || regions[r][c]!==regions[r-1]?.[c])
-        cell.classList.add("top-border");
-
-      if(c===0 || regions[r][c]!==regions[r][c-1])
-        cell.classList.add("left-border");
-
-      if(r===SIZE-1 || regions[r][c]!==regions[r+1]?.[c])
-        cell.classList.add("bottom-border");
-
-      if(c===SIZE-1 || regions[r][c]!==regions[r][c+1])
-        cell.classList.add("right-border");
-
-      if(boardData[r][c].s)
+      if(boardData[r][c].star)
         cell.innerHTML="⭐";
 
       if(boardData[r][c].x)
@@ -364,10 +320,10 @@ function draw(){
 
         if(mode==="star"){
 
-          boardData[r][c].s =
-            !boardData[r][c].s;
+          boardData[r][c].star =
+            !boardData[r][c].star;
 
-          if(boardData[r][c].s)
+          if(boardData[r][c].star)
             boardData[r][c].x=false;
         }
 
@@ -377,7 +333,7 @@ function draw(){
             !boardData[r][c].x;
 
           if(boardData[r][c].x)
-            boardData[r][c].s=false;
+            boardData[r][c].star=false;
         }
 
         draw();
@@ -396,7 +352,7 @@ function check(){
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
-      if(boardData[r][c].s)
+      if(boardData[r][c].star)
         stars.push([r,c]);
     }
   }
@@ -404,10 +360,7 @@ function check(){
   let okFlag=true;
 
   for(const [r,c] of stars){
-
-    if(!ok(stars,r,c)){
-      okFlag=false;
-    }
+    if(!ok(stars,r,c)) okFlag=false;
   }
 
   if(okFlag && stars.length===SIZE){
@@ -422,10 +375,11 @@ function showAnswer(){
 
   boardData =
     boardData.map((row,r)=>
-      row.map((cell,c)=>({
-        s: solution.some(
-          ([y,x])=>y===r&&x===c
-        ),
+      row.map((_,c)=>({
+        star:
+          solution.some(
+            ([y,x])=>y===r&&x===c
+          ),
         x:false
       }))
     );
@@ -434,6 +388,10 @@ function showAnswer(){
 }
 
 newGame();
+
+function newGame(){
+  setup();
+}
 
 </script>
 
