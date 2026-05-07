@@ -21,19 +21,18 @@ body{
   padding:20px;
 }
 
-h1{
-  margin-bottom:10px;
-}
+h1{margin-bottom:10px;}
 
 .controls{
   display:flex;
-  gap:10px;
-  margin-bottom:15px;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
 }
 
 button{
   border:none;
-  padding:10px 14px;
+  padding:10px 12px;
   border-radius:10px;
   background:#334155;
   color:white;
@@ -60,24 +59,24 @@ button.active{
   font-size:28px;
   cursor:pointer;
   user-select:none;
-  border:1px solid rgba(255,255,255,0.08);
 }
 
 .star{color:#facc15;}
 .x{color:#cbd5e1;}
 
-#message{
+#msg{
   margin-top:10px;
   min-height:20px;
-  font-weight:bold;
 }
 
+/* 太いエリア線 */
+.top-border{border-top:4px solid white;}
+.left-border{border-left:4px solid white;}
+.right-border{border-right:4px solid white;}
+.bottom-border{border-bottom:4px solid white;}
+
 @media(max-width:600px){
-  .cell{
-    width:40px;
-    height:40px;
-    font-size:22px;
-  }
+  .cell{width:40px;height:40px;font-size:22px;}
 }
 </style>
 </head>
@@ -89,45 +88,50 @@ button.active{
 <div class="controls">
   <button id="starBtn" onclick="setMode('star')">⭐ 星</button>
   <button id="xBtn" onclick="setMode('x')">❌ バツ</button>
+  <button onclick="newGame()">🔄 新しい問題</button>
+  <button onclick="showAnswer()">💡 答え表示</button>
 </div>
 
 <div id="board"></div>
-<div id="message"></div>
+<div id="msg"></div>
 
 <script>
 
 const SIZE = 8;
-const REGION_COUNT = 8;
 
 let mode = "star";
-let player = [];
+let boardData = [];
 let regions = [];
 let solution = [];
 
 const board = document.getElementById("board");
-const message = document.getElementById("message");
+const msg = document.getElementById("msg");
+
+const COLORS = [
+ "#1e293b","#3f1d2e","#14532d","#312e81",
+ "#422006","#0f766e","#374151","#4c0519"
+];
 
 /* ===== モード ===== */
-
 function setMode(m){
   mode = m;
-
   starBtn.classList.remove("active");
   xBtn.classList.remove("active");
-
-  if(m === "star") starBtn.classList.add("active");
-  if(m === "x") xBtn.classList.add("active");
+  if(m==="star") starBtn.classList.add("active");
+  if(m==="x") xBtn.classList.add("active");
 }
 
-/* ===== エリア生成（安定ランダム） ===== */
+/* ===== エリア生成（必ず2マス以上） ===== */
+function makeRegions(){
 
-function createRegions(){
-
-  const grid =
-    Array.from({length:SIZE},
-      ()=>Array(SIZE).fill(-1));
+  const grid = Array.from(
+    {length:SIZE},
+    ()=>Array(SIZE).fill(-1)
+  );
 
   let id = 0;
+
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
@@ -137,13 +141,11 @@ function createRegions(){
       const stack = [[r,c]];
       grid[r][c] = id;
 
-      while(stack.length){
+      let size = 1;
+
+      while(stack.length && size < 6){
 
         const [y,x] = stack.pop();
-
-        const dirs = [
-          [1,0],[-1,0],[0,1],[0,-1]
-        ];
 
         for(const [dy,dx] of dirs){
 
@@ -160,26 +162,63 @@ function createRegions(){
 
               grid[ny][nx] = id;
               stack.push([ny,nx]);
+              size++;
             }
           }
         }
       }
 
       id++;
-      if(id >= REGION_COUNT) return grid;
+    }
+  }
+
+  // 最低2マス保証（小さいエリア修正）
+  for(let i=0;i<3;i++){
+
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+
+        const id = grid[r][c];
+
+        let count = 0;
+
+        for(let y=0;y<SIZE;y++){
+          for(let x=0;x<SIZE;x++){
+            if(grid[y][x] === id) count++;
+          }
+        }
+
+        if(count < 2){
+
+          const neighbors = [
+            [1,0],[-1,0],[0,1],[0,-1]
+          ];
+
+          for(const [dy,dx] of neighbors){
+
+            const ny=r+dy,nx=c+dx;
+
+            if(
+              ny>=0&&nx>=0&&
+              ny<SIZE&&nx<SIZE
+            ){
+              grid[ny][nx] = id;
+            }
+          }
+        }
+      }
     }
   }
 
   return grid;
 }
 
-/* ===== ルール判定 ===== */
-
-function valid(stars,r,c){
+/* ===== ルール ===== */
+function ok(stars,r,c){
 
   for(const [y,x] of stars){
 
-    if(y === r || x === c) return false;
+    if(y===r||x===c) return false;
 
     if(
       Math.abs(y-r)<=1 &&
@@ -193,19 +232,52 @@ function valid(stars,r,c){
   return true;
 }
 
-/* ===== 解答生成 ===== */
-
+/* ===== 解（簡易・重すぎ防止） ===== */
 function solve(){
 
-  const stars = [];
+  const stars=[];
 
   function dfs(r){
 
-    if(r === SIZE) return true;
+    if(r===SIZE) return true;
 
     for(let c=0;c<SIZE;c++){
 
-      if(valid(stars,r,c)){
+      if(ok(stars,r,c)){
+
+        stars.push([r,c]);
+
+        if(dfs(r+1)) return true;
+
+        stars.pop();
+      }
+    }
+
+    return false;
+  }
+
+  dfs(0);
+  return stars;
+}
+
+/* ===== 唯一解チェック（簡易） ===== */
+function hasAnotherSolution(){
+
+  let count = 0;
+
+  const stars=[];
+
+  function dfs(r){
+
+    if(r===SIZE){
+
+      count++;
+      return count > 1;
+    }
+
+    for(let c=0;c<SIZE;c++){
+
+      if(ok(stars,r,c)){
 
         stars.push([r,c]);
 
@@ -220,63 +292,92 @@ function solve(){
 
   dfs(0);
 
-  return stars;
+  return count > 1;
 }
 
-/* ===== 初期化 ===== */
+/* ===== 新規問題 ===== */
+function newGame(){
 
-function setup(){
+  let tries = 0;
 
-  regions = createRegions();
-  solution = solve();
+  do{
 
-  player = Array.from({length:SIZE},
-    ()=>Array.from({length:SIZE},
-      ()=>({star:false,x:false})
-    )
+    regions = makeRegions();
+    solution = solve();
+
+    tries++;
+
+    if(tries > 10) break;
+
+  }while(hasAnotherSolution());
+
+  boardData = Array.from(
+    {length:SIZE},
+    ()=>Array(SIZE).fill({s:false,x:false})
+  );
+
+  boardData = boardData.map(r =>
+    r.map(()=>({s:false,x:false}))
   );
 
   draw();
 }
 
 /* ===== 描画 ===== */
-
 function draw(){
 
-  board.innerHTML = "";
+  board.innerHTML="";
   board.style.gridTemplateColumns =
     `repeat(${SIZE},1fr)`;
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
 
-      const cell = document.createElement("div");
-      cell.className = "cell";
+      const cell=document.createElement("div");
+      cell.className="cell";
 
-      if(player[r][c].star)
-        cell.innerHTML = "⭐";
+      const id = regions[r][c];
 
-      if(player[r][c].x)
-        cell.innerHTML = "❌";
+      cell.style.background =
+        COLORS[id % COLORS.length];
 
-      cell.onclick = ()=>{
+      // 太線エリア
+      if(r===0 || regions[r][c]!==regions[r-1]?.[c])
+        cell.classList.add("top-border");
 
-        if(mode === "star"){
+      if(c===0 || regions[r][c]!==regions[r][c-1])
+        cell.classList.add("left-border");
 
-          player[r][c].star =
-            !player[r][c].star;
+      if(r===SIZE-1 || regions[r][c]!==regions[r+1]?.[c])
+        cell.classList.add("bottom-border");
 
-          if(player[r][c].star)
-            player[r][c].x = false;
+      if(c===SIZE-1 || regions[r][c]!==regions[r][c+1])
+        cell.classList.add("right-border");
+
+      if(boardData[r][c].s)
+        cell.innerHTML="⭐";
+
+      if(boardData[r][c].x)
+        cell.innerHTML="❌";
+
+      cell.onclick=()=>{
+
+        if(mode==="star"){
+
+          boardData[r][c].s =
+            !boardData[r][c].s;
+
+          if(boardData[r][c].s)
+            boardData[r][c].x=false;
         }
 
-        if(mode === "x"){
+        if(mode==="x"){
 
-          player[r][c].x =
-            !player[r][c].x;
+          boardData[r][c].x =
+            !boardData[r][c].x;
 
-          if(player[r][c].x)
-            player[r][c].star = false;
+          if(boardData[r][c].x)
+            boardData[r][c].s=false;
         }
 
         draw();
@@ -288,55 +389,51 @@ function draw(){
   }
 }
 
-/* ===== 軽量チェック（固まらない版） ===== */
-
+/* ===== チェック ===== */
 function check(){
 
-  let stars = [];
+  let stars=[];
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
-
-      if(player[r][c].star){
+      if(boardData[r][c].s)
         stars.push([r,c]);
-      }
     }
   }
 
-  let ok = true;
+  let okFlag=true;
 
-  for(let i=0;i<stars.length;i++){
+  for(const [r,c] of stars){
 
-    const [r1,c1] = stars[i];
-
-    for(let j=i+1;j<stars.length;j++){
-
-      const [r2,c2] = stars[j];
-
-      if(
-        r1 === r2 ||
-        c1 === c2 ||
-        regions[r1][c1] === regions[r2][c2] ||
-        (
-          Math.abs(r1-r2)<=1 &&
-          Math.abs(c1-c2)<=1
-        )
-      ){
-        ok = false;
-      }
+    if(!ok(stars,r,c)){
+      okFlag=false;
     }
   }
 
-  if(ok && stars.length === SIZE){
-    message.textContent = "🎉 クリア！";
+  if(okFlag && stars.length===SIZE){
+    msg.textContent="🎉 クリア！";
   }else{
-    message.textContent = "";
+    msg.textContent="";
   }
 }
 
-/* ===== 起動 ===== */
+/* ===== 答え ===== */
+function showAnswer(){
 
-setup();
+  boardData =
+    boardData.map((row,r)=>
+      row.map((cell,c)=>({
+        s: solution.some(
+          ([y,x])=>y===r&&x===c
+        ),
+        x:false
+      }))
+    );
+
+  draw();
+}
+
+newGame();
 
 </script>
 
