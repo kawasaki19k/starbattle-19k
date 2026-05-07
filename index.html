@@ -30,14 +30,14 @@ h1{
 .controls{
   display:flex;
   gap:10px;
-  margin-bottom:20px;
+  margin-bottom:12px;
   flex-wrap:wrap;
   justify-content:center;
 }
 
 button{
   border:none;
-  background:#2563eb;
+  background:#334155;
   color:white;
   padding:10px 16px;
   border-radius:10px;
@@ -47,6 +47,10 @@ button{
 
 button:hover{
   background:#1d4ed8;
+}
+
+button.active{
+  background:#2563eb;
 }
 
 #board{
@@ -88,7 +92,7 @@ button:hover{
 }
 
 #message{
-  margin-top:16px;
+  margin-top:10px;
   min-height:24px;
   font-weight:bold;
 }
@@ -101,17 +105,14 @@ button:hover{
 }
 
 @media(max-width:600px){
-
   .cell{
     width:40px;
     height:40px;
     font-size:22px;
   }
-
   .xmark{
     font-size:18px;
   }
-
 }
 
 </style>
@@ -122,23 +123,19 @@ button:hover{
 <h1>⭐ Star Battle</h1>
 
 <div class="controls">
+  <button id="starBtn" onclick="setMode('star')">★ モード</button>
+  <button id="xBtn" onclick="setMode('x')">✕ モード</button>
+
   <button onclick="newGame()">新しい問題</button>
   <button onclick="showAnswer()">答え表示</button>
-  <button onclick="copyURL()">URL共有</button>
 </div>
 
 <div id="board"></div>
-
 <div id="message"></div>
 
 <div class="rule">
-左クリック：★<br>
-右クリック：✕<br><br>
-
-各行・列・エリアに<br>
-星を1つずつ置く。<br><br>
-
-星同士は縦横斜めに隣接不可。
+各行・列・エリアに星を1つずつ<br>
+星同士は縦横斜めに隣接不可
 </div>
 
 <script>
@@ -149,6 +146,7 @@ const REGION_COUNT = 8;
 let player = [];
 let regions = [];
 let solution = [];
+let mode = "star";
 
 const board =
   document.getElementById("board");
@@ -166,6 +164,25 @@ const regionColors = [
   "#0f766e",
   "#4c0519"
 ];
+
+/* =========================
+   モード切替
+========================= */
+
+function setMode(m){
+
+  mode = m;
+
+  starBtn.classList.remove("active");
+  xBtn.classList.remove("active");
+
+  if(m === "star") starBtn.classList.add("active");
+  if(m === "x") xBtn.classList.add("active");
+}
+
+/* =========================
+   乱数・シャッフル
+========================= */
 
 function seededRandom(seed){
 
@@ -193,54 +210,41 @@ function shuffle(arr, rand){
   return arr;
 }
 
+/* =========================
+   エリア生成（8エリア固定）
+========================= */
+
 function generateRegions(seed){
 
   const rand =
     seededRandom(seed);
 
-  const grid = [];
-
-  for(let r=0;r<SIZE;r++){
-
-    grid[r] = [];
-
-    for(let c=0;c<SIZE;c++){
-
-      grid[r][c] = -1;
-    }
-  }
+  const grid =
+    Array.from({length:SIZE},
+      ()=>Array(SIZE).fill(-1));
 
   const seeds = [];
 
   while(seeds.length < REGION_COUNT){
 
-    const r =
-      Math.floor(rand()*SIZE);
-
-    const c =
-      Math.floor(rand()*SIZE);
+    const r = Math.floor(rand()*SIZE);
+    const c = Math.floor(rand()*SIZE);
 
     if(
       !seeds.some(([sr,sc])=>
         sr===r && sc===c
       )
     ){
-
       seeds.push([r,c]);
     }
   }
 
   for(let i=0;i<REGION_COUNT;i++){
-
     const [r,c] = seeds[i];
-
     grid[r][c] = i;
   }
 
-  const targetSize =
-    Math.floor(
-      (SIZE*SIZE)/REGION_COUNT
-    );
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
 
   let changed = true;
 
@@ -248,35 +252,11 @@ function generateRegions(seed){
 
     changed = false;
 
-    for(let id=0;id<REGION_COUNT;id++){
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
 
-      const cells = [];
-
-      for(let r=0;r<SIZE;r++){
-        for(let c=0;c<SIZE;c++){
-
-          if(grid[r][c]===id){
-
-            cells.push([r,c]);
-          }
-        }
-      }
-
-      if(cells.length >= targetSize){
-        continue;
-      }
-
-      shuffle(cells, rand);
-
-      for(const [r,c] of cells){
-
-        const dirs =
-          shuffle([
-            [1,0],
-            [-1,0],
-            [0,1],
-            [0,-1]
-          ], rand);
+        const id = grid[r][c];
+        if(id === -1) continue;
 
         for(const [dr,dc] of dirs){
 
@@ -284,75 +264,40 @@ function generateRegions(seed){
           const nc = c + dc;
 
           if(
-            nr < 0 ||
-            nc < 0 ||
-            nr >= SIZE ||
-            nc >= SIZE
+            nr>=0&&nc>=0&&
+            nr<SIZE&&nc<SIZE&&
+            grid[nr][nc] === -1
           ){
-            continue;
+            if(Math.random() < 0.6){
+
+              grid[nr][nc] = id;
+              changed = true;
+            }
           }
-
-          if(grid[nr][nc] === -1){
-
-            grid[nr][nc] = id;
-
-            changed = true;
-
-            break;
-          }
-        }
-
-        if(changed){
-          break;
         }
       }
     }
   }
 
-  // 残りマス埋め
-  let unresolved = true;
+  // 空き埋め
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
 
-  while(unresolved){
+      if(grid[r][c] === -1){
 
-    unresolved = false;
+        const dirs2 = [[1,0],[-1,0],[0,1],[0,-1]];
 
-    for(let r=0;r<SIZE;r++){
-      for(let c=0;c<SIZE;c++){
-
-        if(grid[r][c] !== -1){
-          continue;
-        }
-
-        const dirs = [
-          [1,0],
-          [-1,0],
-          [0,1],
-          [0,-1]
-        ];
-
-        shuffle(dirs, rand);
-
-        for(const [dr,dc] of dirs){
+        for(const [dr,dc] of dirs2){
 
           const nr = r + dr;
           const nc = c + dc;
 
           if(
-            nr < 0 ||
-            nc < 0 ||
-            nr >= SIZE ||
-            nc >= SIZE
+            nr>=0&&nc>=0&&
+            nr<SIZE&&nc<SIZE&&
+            grid[nr][nc] !== -1
           ){
-            continue;
-          }
-
-          if(grid[nr][nc] !== -1){
-
-            grid[r][c] =
-              grid[nr][nc];
-
-            unresolved = true;
-
+            grid[r][c] = grid[nr][nc];
             break;
           }
         }
@@ -363,12 +308,15 @@ function generateRegions(seed){
   return grid;
 }
 
+/* =========================
+   ルール判定
+========================= */
+
 function isValid(stars,r,c){
 
   for(const [sr,sc] of stars){
 
-    if(sr===r) return false;
-    if(sc===c) return false;
+    if(sr===r||sc===c) return false;
 
     if(
       Math.abs(sr-r)<=1 &&
@@ -388,29 +336,25 @@ function isValid(stars,r,c){
   return true;
 }
 
+/* =========================
+   解答生成
+========================= */
+
 function solve(){
 
   const stars = [];
 
   function dfs(row){
 
-    if(row===SIZE){
+    if(row === SIZE) return true;
 
-      return true;
-    }
-
-    const cols =
-      [...Array(SIZE).keys()];
-
-    for(const c of cols){
+    for(let c=0;c<SIZE;c++){
 
       if(isValid(stars,row,c)){
 
         stars.push([row,c]);
 
-        if(dfs(row+1)){
-          return true;
-        }
+        if(dfs(row+1)) return true;
 
         stars.pop();
       }
@@ -420,45 +364,40 @@ function solve(){
   }
 
   dfs(0);
-
   return stars;
 }
 
+/* =========================
+   初期化
+========================= */
+
 function setup(seed){
 
-  regions =
-    generateRegions(seed);
+  regions = generateRegions(seed);
+  solution = solve();
 
-  solution =
-    solve();
-
-  player = [];
-
-  for(let r=0;r<SIZE;r++){
-
-    player[r] = [];
-
-    for(let c=0;c<SIZE;c++){
-
-      player[r][c] = {
-        star:false,
-        x:false
-      };
-    }
-  }
+  player = Array.from(
+    {length:SIZE},
+    ()=>Array.from(
+      {length:SIZE},
+      ()=>({star:false,x:false})
+    )
+  );
 
   draw();
 }
 
+/* =========================
+   描画
+========================= */
+
 function draw(){
 
   board.innerHTML = "";
-
   board.style.gridTemplateColumns =
     `repeat(${SIZE},1fr)`;
 
   for(let r=0;r<SIZE;r++){
-
     for(let c=0;c<SIZE;c++){
 
       const cell =
@@ -466,193 +405,77 @@ function draw(){
 
       cell.className = "cell";
 
-      const region =
-        regions[r][c];
+      const id = regions[r][c];
 
       cell.style.background =
-        regionColors[
-          region %
-          regionColors.length
-        ];
+        regionColors[id];
 
-      if(player[r][c].star){
+      if(player[r][c].star)
+        cell.innerHTML = "★";
 
-        cell.innerHTML =
-          '<span class="star">★</span>';
-      }
-
-      if(player[r][c].x){
-
-        cell.innerHTML =
-          '<span class="xmark">✕</span>';
-      }
-
-      // 境界線
-
-      if(
-        r>0 &&
-        regions[r][c] !==
-        regions[r-1][c]
-      ){
-
-        cell.style.borderTop =
-          "4px solid white";
-      }
-
-      if(
-        c>0 &&
-        regions[r][c] !==
-        regions[r][c-1]
-      ){
-
-        cell.style.borderLeft =
-          "4px solid white";
-      }
-
-      if(
-        r<SIZE-1 &&
-        regions[r][c] !==
-        regions[r+1][c]
-      ){
-
-        cell.style.borderBottom =
-          "4px solid white";
-      }
-
-      if(
-        c<SIZE-1 &&
-        regions[r][c] !==
-        regions[r][c+1]
-      ){
-
-        cell.style.borderRight =
-          "4px solid white";
-      }
+      if(player[r][c].x)
+        cell.innerHTML = "✕";
 
       cell.onclick = ()=>{
 
-        player[r][c].star =
-          !player[r][c].star;
+        if(mode === "star"){
 
-        if(player[r][c].star){
+          player[r][c].star =
+            !player[r][c].star;
 
-          player[r][c].x = false;
+          if(player[r][c].star)
+            player[r][c].x = false;
+        }
+
+        if(mode === "x"){
+
+          player[r][c].x =
+            !player[r][c].x;
+
+          if(player[r][c].x)
+            player[r][c].star = false;
         }
 
         draw();
         validate();
       };
 
-      cell.oncontextmenu = (e)=>{
-
-        e.preventDefault();
-
-        player[r][c].x =
-          !player[r][c].x;
-
-        if(player[r][c].x){
-
-          player[r][c].star = false;
-        }
-
-        draw();
-      };
-
       board.appendChild(cell);
     }
   }
-
-  markInvalid();
 }
 
-function markInvalid(){
-
-  const cells =
-    document.querySelectorAll(".cell");
-
-  const stars = [];
-
-  for(let r=0;r<SIZE;r++){
-    for(let c=0;c<SIZE;c++){
-
-      if(player[r][c].star){
-
-        stars.push([r,c]);
-      }
-    }
-  }
-
-  for(let i=0;i<stars.length;i++){
-
-    const [r1,c1] = stars[i];
-
-    for(let j=i+1;j<stars.length;j++){
-
-      const [r2,c2] = stars[j];
-
-      const bad =
-        r1===r2 ||
-        c1===c2 ||
-
-        (
-          Math.abs(r1-r2)<=1 &&
-          Math.abs(c1-c2)<=1
-        ) ||
-
-        (
-          regions[r1][c1]===
-          regions[r2][c2]
-        );
-
-      if(bad){
-
-        cells[r1*SIZE+c1]
-          .classList.add("invalid");
-
-        cells[r2*SIZE+c2]
-          .classList.add("invalid");
-      }
-    }
-  }
-}
+/* =========================
+   チェック
+========================= */
 
 function validate(){
 
-  let correct = true;
-
-  for(const [r,c] of solution){
-
-    if(!player[r][c].star){
-
-      correct = false;
-    }
-  }
-
-  let count = 0;
+  let stars = [];
 
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
-
-      if(player[r][c].star){
-
-        count++;
-      }
+      if(player[r][c].star)
+        stars.push([r,c]);
     }
   }
 
-  if(
-    correct &&
-    count===SIZE
-  ){
+  let ok = true;
 
-    message.innerText =
-      "🎉 クリア！";
+  for(const [r,c] of stars){
+    if(!isValid(stars,r,c)) ok = false;
+  }
 
+  if(ok && stars.length === SIZE){
+    message.textContent = "🎉 クリア！";
   }else{
-
-    message.innerText = "";
+    message.textContent = "";
   }
 }
+
+/* =========================
+   答え表示
+========================= */
 
 function showAnswer(){
 
@@ -665,29 +488,21 @@ function showAnswer(){
   draw();
 }
 
+/* =========================
+   新規
+========================= */
+
 function newGame(){
 
   const seed = Date.now();
-
   location.hash = seed;
-
   setup(seed);
 }
 
-function copyURL(){
-
-  navigator.clipboard.writeText(
-    location.href
-  );
-
-  message.innerText =
-    "URLをコピーしました";
-}
+/* 起動 */
 
 const seed =
-  Number(
-    location.hash.replace("#","")
-  )
+  Number(location.hash.replace("#",""))
   || Date.now();
 
 location.hash = seed;
