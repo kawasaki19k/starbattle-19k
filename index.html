@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Star Battle</title>
 
 <style>
-
 *{
   box-sizing:border-box;
   font-family:sans-serif;
@@ -19,7 +18,6 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
-  min-height:100vh;
   padding:20px;
 }
 
@@ -30,19 +28,16 @@ h1{
 .controls{
   display:flex;
   gap:10px;
-  margin-bottom:10px;
-  flex-wrap:wrap;
-  justify-content:center;
+  margin-bottom:15px;
 }
 
 button{
   border:none;
-  background:#334155;
-  color:white;
   padding:10px 14px;
   border-radius:10px;
+  background:#334155;
+  color:white;
   cursor:pointer;
-  font-size:14px;
 }
 
 button.active{
@@ -68,34 +63,15 @@ button.active{
   border:1px solid rgba(255,255,255,0.08);
 }
 
-.star{
-  color:#facc15;
-  text-shadow:0 0 10px rgba(250,204,21,0.8);
-}
-
-.xmark{
-  color:#cbd5e1;
-  font-size:22px;
-}
-
-.invalid{
-  background:#7f1d1d !important;
-}
+.star{color:#facc15;}
+.x{color:#cbd5e1;}
 
 #message{
-  margin-top:12px;
-  min-height:24px;
+  margin-top:10px;
+  min-height:20px;
   font-weight:bold;
 }
 
-.rule{
-  margin-top:20px;
-  opacity:0.8;
-  text-align:center;
-  line-height:1.7;
-}
-
-/* スマホ */
 @media(max-width:600px){
   .cell{
     width:40px;
@@ -103,7 +79,6 @@ button.active{
     font-size:22px;
   }
 }
-
 </style>
 </head>
 
@@ -114,76 +89,39 @@ button.active{
 <div class="controls">
   <button id="starBtn" onclick="setMode('star')">⭐ 星</button>
   <button id="xBtn" onclick="setMode('x')">❌ バツ</button>
-  <button id="eraseBtn" onclick="setMode('erase')">🧽 消す</button>
-</div>
-
-<div class="controls">
-  <button onclick="newGame()">新しい問題</button>
-  <button onclick="showAnswer()">答え表示</button>
 </div>
 
 <div id="board"></div>
-
 <div id="message"></div>
-
-<div class="rule">
-各行・列・エリアに星は1つだけ<br>
-星同士は縦横斜めに隣接不可
-</div>
 
 <script>
 
 const SIZE = 8;
 const REGION_COUNT = 8;
 
+let mode = "star";
 let player = [];
 let regions = [];
 let solution = [];
 
-let mode = "star";
+const board = document.getElementById("board");
+const message = document.getElementById("message");
 
-const board =
-  document.getElementById("board");
-
-const message =
-  document.getElementById("message");
+/* ===== モード ===== */
 
 function setMode(m){
-
   mode = m;
 
-  document.querySelectorAll("button")
-    .forEach(b=>b.classList.remove("active"));
+  starBtn.classList.remove("active");
+  xBtn.classList.remove("active");
 
-  if(m==="star")
-    starBtn.classList.add("active");
-
-  if(m==="x")
-    xBtn.classList.add("active");
-
-  if(m==="erase")
-    eraseBtn.classList.add("active");
+  if(m === "star") starBtn.classList.add("active");
+  if(m === "x") xBtn.classList.add("active");
 }
 
-/* --- ランダム --- */
+/* ===== エリア生成（安定ランダム） ===== */
 
-function rand(seed){
-
-  return function(){
-
-    seed =
-      (seed * 9301 + 49297)
-      % 233280;
-
-    return seed / 233280;
-  }
-}
-
-/* --- エリア生成（ランダム風） --- */
-
-function createRegions(seed){
-
-  const r = rand(seed);
+function createRegions(){
 
   const grid =
     Array.from({length:SIZE},
@@ -191,104 +129,79 @@ function createRegions(seed){
 
   let id = 0;
 
-  const seeds = [];
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
 
-  while(seeds.length < REGION_COUNT){
+      if(grid[r][c] !== -1) continue;
 
-    const y = Math.floor(r()*SIZE);
-    const x = Math.floor(r()*SIZE);
+      const stack = [[r,c]];
+      grid[r][c] = id;
 
-    if(!seeds.some(p=>p[0]===y&&p[1]===x)){
-      seeds.push([y,x]);
-    }
-  }
+      while(stack.length){
 
-  for(let i=0;i<REGION_COUNT;i++){
+        const [y,x] = stack.pop();
 
-    const [y,x] = seeds[i];
+        const dirs = [
+          [1,0],[-1,0],[0,1],[0,-1]
+        ];
 
-    grid[y][x] = i;
-  }
+        for(const [dy,dx] of dirs){
 
-  const dirs = [
-    [1,0],[-1,0],[0,1],[0,-1]
-  ];
+          const ny = y + dy;
+          const nx = x + dx;
 
-  let changed = true;
+          if(
+            ny>=0 && nx>=0 &&
+            ny<SIZE && nx<SIZE &&
+            grid[ny][nx] === -1
+          ){
 
-  while(changed){
+            if(Math.random() < 0.6){
 
-    changed = false;
-
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
-
-        if(grid[y][x]===-1){
-
-          const candidates = [];
-
-          for(const [dy,dx] of dirs){
-
-            const ny=y+dy,nx=x+dx;
-
-            if(
-              ny>=0&&nx>=0&&
-              ny<SIZE&&nx<SIZE&&
-              grid[ny][nx]!==-1
-            ){
-              candidates.push(grid[ny][nx]);
+              grid[ny][nx] = id;
+              stack.push([ny,nx]);
             }
-          }
-
-          if(candidates.length){
-
-            grid[y][x] =
-              candidates[
-                Math.floor(
-                  Math.random()*
-                  candidates.length
-                )
-              ];
-
-            changed = true;
           }
         }
       }
+
+      id++;
+      if(id >= REGION_COUNT) return grid;
     }
   }
 
   return grid;
 }
 
-/* --- ルール --- */
+/* ===== ルール判定 ===== */
 
 function valid(stars,r,c){
 
   for(const [y,x] of stars){
 
-    if(y===r||x===c) return false;
+    if(y === r || x === c) return false;
 
     if(
       Math.abs(y-r)<=1 &&
       Math.abs(x-c)<=1
     ) return false;
 
-    if(regions[y][x]===regions[r][c])
+    if(regions[y][x] === regions[r][c])
       return false;
   }
 
   return true;
 }
 
-/* --- 解答生成（簡易） --- */
+/* ===== 解答生成 ===== */
 
 function solve(){
 
-  const stars=[];
+  const stars = [];
 
   function dfs(r){
 
-    if(r===SIZE) return true;
+    if(r === SIZE) return true;
 
     for(let c=0;c<SIZE;c++){
 
@@ -310,12 +223,11 @@ function solve(){
   return stars;
 }
 
-/* --- 初期化 --- */
+/* ===== 初期化 ===== */
 
-function setup(seed){
+function setup(){
 
-  regions = createRegions(seed);
-
+  regions = createRegions();
   solution = solve();
 
   player = Array.from({length:SIZE},
@@ -327,60 +239,44 @@ function setup(seed){
   draw();
 }
 
-/* --- 描画 --- */
+/* ===== 描画 ===== */
 
 function draw(){
 
-  board.innerHTML="";
-
+  board.innerHTML = "";
   board.style.gridTemplateColumns =
     `repeat(${SIZE},1fr)`;
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
 
-      const cell =
-        document.createElement("div");
+      const cell = document.createElement("div");
+      cell.className = "cell";
 
-      cell.className="cell";
+      if(player[r][c].star)
+        cell.innerHTML = "⭐";
 
-      const id = regions[y][x];
+      if(player[r][c].x)
+        cell.innerHTML = "❌";
 
-      cell.style.background =
-        ["#172554","#3f1d2e","#14532d",
-         "#3f3f46","#312e81","#422006",
-         "#0f766e","#4c0519"][id];
+      cell.onclick = ()=>{
 
-      if(player[y][x].star)
-        cell.innerHTML="⭐";
+        if(mode === "star"){
 
-      if(player[y][x].x)
-        cell.innerHTML="✕";
+          player[r][c].star =
+            !player[r][c].star;
 
-      cell.onclick=()=>{
-
-        if(mode==="star"){
-
-          player[y][x].star =
-            !player[y][x].star;
-
-          if(player[y][x].star)
-            player[y][x].x=false;
+          if(player[r][c].star)
+            player[r][c].x = false;
         }
 
-        if(mode==="x"){
+        if(mode === "x"){
 
-          player[y][x].x =
-            !player[y][x].x;
+          player[r][c].x =
+            !player[r][c].x;
 
-          if(player[y][x].x)
-            player[y][x].star=false;
-        }
-
-        if(mode==="erase"){
-
-          player[y][x].star=false;
-          player[y][x].x=false;
+          if(player[r][c].x)
+            player[r][c].star = false;
         }
 
         draw();
@@ -392,44 +288,55 @@ function draw(){
   }
 }
 
-/* --- チェック --- */
+/* ===== 軽量チェック（固まらない版） ===== */
 
 function check(){
 
-  let ok=true;
-  let count=0;
+  let stars = [];
 
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
 
-      if(player[y][x].star){
-
-        count++;
-
-        if(!valid(
-          Object.entries(player)
-            .flatMap(([r,row])=>
-              row.map((c,i)=>
-                c.star?[+r,i]:null
-              )
-            ).filter(Boolean),
-          y,x
-        )){
-          ok=false;
-        }
+      if(player[r][c].star){
+        stars.push([r,c]);
       }
     }
   }
 
-  if(ok && count===SIZE)
-    message.textContent="🎉 クリア！";
-  else
-    message.textContent="";
+  let ok = true;
+
+  for(let i=0;i<stars.length;i++){
+
+    const [r1,c1] = stars[i];
+
+    for(let j=i+1;j<stars.length;j++){
+
+      const [r2,c2] = stars[j];
+
+      if(
+        r1 === r2 ||
+        c1 === c2 ||
+        regions[r1][c1] === regions[r2][c2] ||
+        (
+          Math.abs(r1-r2)<=1 &&
+          Math.abs(c1-c2)<=1
+        )
+      ){
+        ok = false;
+      }
+    }
+  }
+
+  if(ok && stars.length === SIZE){
+    message.textContent = "🎉 クリア！";
+  }else{
+    message.textContent = "";
+  }
 }
 
-/* --- 起動 --- */
+/* ===== 起動 ===== */
 
-setup(Date.now());
+setup();
 
 </script>
 
