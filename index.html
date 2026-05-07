@@ -19,8 +19,8 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding:20px;
   min-height:100vh;
+  padding:20px;
 }
 
 h1{
@@ -42,6 +42,7 @@ button{
   padding:10px 16px;
   border-radius:10px;
   cursor:pointer;
+  font-size:14px;
 }
 
 button:hover{
@@ -50,10 +51,9 @@ button:hover{
 
 #board{
   display:grid;
-  gap:0;
   border:4px solid white;
-  overflow:hidden;
   border-radius:12px;
+  overflow:hidden;
 }
 
 .cell{
@@ -62,11 +62,11 @@ button:hover{
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
   user-select:none;
+  cursor:pointer;
   font-size:28px;
-  border:1px solid rgba(255,255,255,0.1);
   transition:0.15s;
+  border:1px solid rgba(255,255,255,0.08);
 }
 
 .cell:hover{
@@ -95,9 +95,9 @@ button:hover{
 
 .rule{
   margin-top:20px;
-  opacity:0.8;
-  line-height:1.7;
   text-align:center;
+  line-height:1.7;
+  opacity:0.8;
 }
 
 @media(max-width:600px){
@@ -144,27 +144,27 @@ button:hover{
 <script>
 
 const SIZE = 8;
+const REGION_COUNT = 8;
 
 let player = [];
-let solution = [];
 let regions = [];
+let solution = [];
 
-const board = document.getElementById("board");
-const message = document.getElementById("message");
+const board =
+  document.getElementById("board");
+
+const message =
+  document.getElementById("message");
 
 const regionColors = [
   "#172554",
   "#3f1d2e",
-  "#1e293b",
-  "#3f3f46",
-  "#0f766e",
-  "#422006",
   "#14532d",
-  "#4c0519",
+  "#3f3f46",
   "#312e81",
-  "#374151",
-  "#581c87",
-  "#713f12"
+  "#422006",
+  "#0f766e",
+  "#4c0519"
 ];
 
 function seededRandom(seed){
@@ -172,16 +172,31 @@ function seededRandom(seed){
   return function(){
 
     seed =
-      (seed * 9301 + 49297)
-      % 233280;
+      (seed * 1664525 + 1013904223)
+      % 4294967296;
 
-    return seed / 233280;
-  };
+    return seed / 4294967296;
+  }
 }
 
-function createRegions(seed){
+function shuffle(arr, rand){
 
-  const rand = seededRandom(seed);
+  for(let i=arr.length-1;i>0;i--){
+
+    const j =
+      Math.floor(rand()*(i+1));
+
+    [arr[i],arr[j]] =
+      [arr[j],arr[i]];
+  }
+
+  return arr;
+}
+
+function generateRegions(seed){
+
+  const rand =
+    seededRandom(seed);
 
   const grid = [];
 
@@ -195,86 +210,165 @@ function createRegions(seed){
     }
   }
 
-  let regionId = 0;
+  const seeds = [];
 
-  const dirs = [
-    [1,0],
-    [-1,0],
-    [0,1],
-    [0,-1]
-  ];
+  while(seeds.length < REGION_COUNT){
 
-  for(let start=0;start<SIZE*SIZE;start++){
+    const r =
+      Math.floor(rand()*SIZE);
 
-    const sr = Math.floor(start / SIZE);
-    const sc = start % SIZE;
+    const c =
+      Math.floor(rand()*SIZE);
 
-    if(grid[sr][sc] !== -1){
-      continue;
+    if(
+      !seeds.some(([sr,sc])=>
+        sr===r && sc===c
+      )
+    ){
+
+      seeds.push([r,c]);
     }
+  }
 
-    const targetSize =
-      4 + Math.floor(rand()*4);
+  for(let i=0;i<REGION_COUNT;i++){
 
-    const queue = [[sr,sc]];
+    const [r,c] = seeds[i];
 
-    grid[sr][sc] = regionId;
+    grid[r][c] = i;
+  }
 
-    let count = 1;
+  const targetSize =
+    Math.floor(
+      (SIZE*SIZE)/REGION_COUNT
+    );
 
-    while(queue.length && count < targetSize){
+  let changed = true;
 
-      const index =
-        Math.floor(rand()*queue.length);
+  while(changed){
 
-      const [r,c] =
-        queue[index];
+    changed = false;
 
-      const shuffled =
-        [...dirs].sort(()=>rand()-0.5);
+    for(let id=0;id<REGION_COUNT;id++){
 
-      for(const [dr,dc] of shuffled){
+      const cells = [];
 
-        const nr = r + dr;
-        const nc = c + dc;
+      for(let r=0;r<SIZE;r++){
+        for(let c=0;c<SIZE;c++){
 
-        if(
-          nr < 0 ||
-          nc < 0 ||
-          nr >= SIZE ||
-          nc >= SIZE
-        ){
-          continue;
+          if(grid[r][c]===id){
+
+            cells.push([r,c]);
+          }
+        }
+      }
+
+      if(cells.length >= targetSize){
+        continue;
+      }
+
+      shuffle(cells, rand);
+
+      for(const [r,c] of cells){
+
+        const dirs =
+          shuffle([
+            [1,0],
+            [-1,0],
+            [0,1],
+            [0,-1]
+          ], rand);
+
+        for(const [dr,dc] of dirs){
+
+          const nr = r + dr;
+          const nc = c + dc;
+
+          if(
+            nr < 0 ||
+            nc < 0 ||
+            nr >= SIZE ||
+            nc >= SIZE
+          ){
+            continue;
+          }
+
+          if(grid[nr][nc] === -1){
+
+            grid[nr][nc] = id;
+
+            changed = true;
+
+            break;
+          }
         }
 
-        if(grid[nr][nc] !== -1){
-          continue;
-        }
-
-        grid[nr][nc] = regionId;
-
-        queue.push([nr,nc]);
-
-        count++;
-
-        if(count >= targetSize){
+        if(changed){
           break;
         }
       }
     }
+  }
 
-    regionId++;
+  // 残りマス埋め
+  let unresolved = true;
+
+  while(unresolved){
+
+    unresolved = false;
+
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+
+        if(grid[r][c] !== -1){
+          continue;
+        }
+
+        const dirs = [
+          [1,0],
+          [-1,0],
+          [0,1],
+          [0,-1]
+        ];
+
+        shuffle(dirs, rand);
+
+        for(const [dr,dc] of dirs){
+
+          const nr = r + dr;
+          const nc = c + dc;
+
+          if(
+            nr < 0 ||
+            nc < 0 ||
+            nr >= SIZE ||
+            nc >= SIZE
+          ){
+            continue;
+          }
+
+          if(grid[nr][nc] !== -1){
+
+            grid[r][c] =
+              grid[nr][nc];
+
+            unresolved = true;
+
+            break;
+          }
+        }
+      }
+    }
   }
 
   return grid;
 }
 
-function canPlace(stars,r,c){
+function isValid(stars,r,c){
 
   for(const [sr,sc] of stars){
 
-    if(sr === r) return false;
-    if(sc === c) return false;
+    if(sr===r) return false;
+    if(sc===c) return false;
 
     if(
       Math.abs(sr-r)<=1 &&
@@ -294,58 +388,49 @@ function canPlace(stars,r,c){
   return true;
 }
 
-function generateSolution(seed){
-
-  const rand = seededRandom(seed);
+function solve(){
 
   const stars = [];
 
-  let tries = 0;
+  function dfs(row){
 
-  while(
-    stars.length < SIZE &&
-    tries < 20000
-  ){
+    if(row===SIZE){
 
-    const r =
-      Math.floor(rand()*SIZE);
+      return true;
+    }
 
-    const c =
-      Math.floor(rand()*SIZE);
+    const cols =
+      [...Array(SIZE).keys()];
 
-    if(canPlace(stars,r,c)){
+    for(const c of cols){
 
-      const region =
-        regions[r][c];
+      if(isValid(stars,row,c)){
 
-      const used =
-        stars.some(([sr,sc])=>
-          regions[sr][sc]===region
-        );
+        stars.push([row,c]);
 
-      if(!used){
+        if(dfs(row+1)){
+          return true;
+        }
 
-        stars.push([r,c]);
+        stars.pop();
       }
     }
 
-    tries++;
+    return false;
   }
 
-  if(stars.length < SIZE){
-
-    return generateSolution(seed+1);
-  }
+  dfs(0);
 
   return stars;
 }
 
 function setup(seed){
 
-  regions = createRegions(seed);
+  regions =
+    generateRegions(seed);
 
   solution =
-    generateSolution(seed);
+    solve();
 
   player = [];
 
@@ -405,20 +490,42 @@ function draw(){
       // 境界線
 
       if(
-        r > 0 &&
+        r>0 &&
         regions[r][c] !==
         regions[r-1][c]
       ){
+
         cell.style.borderTop =
           "4px solid white";
       }
 
       if(
-        c > 0 &&
+        c>0 &&
         regions[r][c] !==
         regions[r][c-1]
       ){
+
         cell.style.borderLeft =
+          "4px solid white";
+      }
+
+      if(
+        r<SIZE-1 &&
+        regions[r][c] !==
+        regions[r+1][c]
+      ){
+
+        cell.style.borderBottom =
+          "4px solid white";
+      }
+
+      if(
+        c<SIZE-1 &&
+        regions[r][c] !==
+        regions[r][c+1]
+      ){
+
+        cell.style.borderRight =
           "4px solid white";
       }
 
@@ -433,7 +540,7 @@ function draw(){
         }
 
         draw();
-        check();
+        validate();
       };
 
       cell.oncontextmenu = (e)=>{
@@ -455,10 +562,10 @@ function draw(){
     }
   }
 
-  highlightErrors();
+  markInvalid();
 }
 
-function highlightErrors(){
+function markInvalid(){
 
   const cells =
     document.querySelectorAll(".cell");
@@ -487,12 +594,14 @@ function highlightErrors(){
         r1===r2 ||
         c1===c2 ||
 
-        regions[r1][c1]===
-        regions[r2][c2] ||
-
         (
           Math.abs(r1-r2)<=1 &&
           Math.abs(c1-c2)<=1
+        ) ||
+
+        (
+          regions[r1][c1]===
+          regions[r2][c2]
         );
 
       if(bad){
@@ -507,20 +616,18 @@ function highlightErrors(){
   }
 }
 
-function check(){
+function validate(){
 
-  let ok = true;
+  let correct = true;
 
-  // 解答チェック
   for(const [r,c] of solution){
 
     if(!player[r][c].star){
 
-      ok = false;
+      correct = false;
     }
   }
 
-  // 星数
   let count = 0;
 
   for(let r=0;r<SIZE;r++){
@@ -533,25 +640,9 @@ function check(){
     }
   }
 
-  // エリアに最低1個あるか
-  const regionSet = new Set();
-
-  for(let r=0;r<SIZE;r++){
-    for(let c=0;c<SIZE;c++){
-
-      if(player[r][c].star){
-
-        regionSet.add(
-          regions[r][c]
-        );
-      }
-    }
-  }
-
   if(
-    ok &&
-    count===SIZE &&
-    regionSet.size===SIZE
+    correct &&
+    count===SIZE
   ){
 
     message.innerText =
